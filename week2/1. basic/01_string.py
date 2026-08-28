@@ -36,17 +36,18 @@ def is_palindrome(s):
     """
     # TODO: 알파벳과 숫자만 남기고 소문자로 변환하세요
     # 힌트: isalnum() 메서드와 lower() 메서드 사용
-    cleaned = ""
-    for char in s:
-        if char.isalnum():
-            cleaned += char.lower()
+    cleaned = "" # 변환한 내용을 담을 번수
+    for char in s: # for문으로 char에 s문자열을 하나씩 넣음
+        if char.isalnum(): # .isalnum()을 사용해서 char에 들어온 값이 알파벳이나 숫자면
+            cleaned += char.lower() # cleaned에 소문자로(.lower()) 변환한 값을 저장
         
-
     
     # TODO: 정제된 문자열이 회문인지 확인하세요
     # 방법1: 문자열을 뒤집어서 비교 ([::-1] 사용)
     # 방법2: 양 끝 인덱스를 이용한 투 포인터 방식
-    if cleaned == cleaned[::-1]:
+
+    #정리된 cleaned값을 cleaned[::1](<-문자열 뒤집기)와 비교하여 회문(앞뒤 똑같은)이면 True 아니면 False
+    if cleaned == cleaned[::-1]:  
         return True
     else:
         return False

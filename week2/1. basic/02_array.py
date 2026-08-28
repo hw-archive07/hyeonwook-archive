@@ -44,14 +44,21 @@ def rotate_matrix_90(matrix):
     n = len(matrix)
     
     # TODO: n x n 크기의 새로운 배열을 생성하세요 (0으로 초기화)
+
+    # return값으로 정해진 rotated변수에 0으로 초기화된 n * n 배열을 생성
+    # 리스트 컴프리헨션 검색
     rotated = [[0] * n for i in range(n)]
 
-    for i in range(n):
-        for j in range(n):
-            rotated[j][n-1-i] = matrix[i][j]
     # TODO: 원본 배열의 각 요소를 회전된 위치에 배치하세요
     # 힌트: (i, j) 위치의 요소는 회전 후 (j, n-1-i) 위치로 이동
-    
+
+    # len(matrix)로 문자열의 길이가 저장된 n만큼 반복
+    for i in range(n):
+        # 1에 2 1에 3 느낌으로 이중for문을 사용함
+        for j in range(n):
+            # 기존 배열 matrix의 i, j위치에 있는 원소를 회전 후 새로운 위치인 (j, n-1-i)에 옮겨담음
+            rotated[j][n-1-i] = matrix[i][j]
+
     return rotated
 
 def print_matrix(matrix):
