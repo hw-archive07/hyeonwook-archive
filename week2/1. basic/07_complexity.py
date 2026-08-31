@@ -34,7 +34,9 @@ def find_duplicates_brute_force(nums):
     # TODO: 이중 반복문으로 중복 찾기
     ## i번째 원소와 i+1 이후의 모든 원소를 비교
     ## 같은 원소를 찾으면 duplicates에 추가 (중복 추가 방지 필요)
+    # n의 문자열 수 만큼 반복
     for i in range(n):
+        # i를 한 번 더 비교하지 않게 i + 1
         for j in range(i + 1, n):
             if nums[i] == nums[j]:
                 if nums[i] not in duplicates:

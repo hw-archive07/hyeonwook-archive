@@ -38,6 +38,7 @@ def factorial(n):
         return 1
     
     # TODO: recursive case를 작성하세요
+    # 위쪽 예제 확인
     else:
         return n * factorial(n - 1)
 
@@ -59,6 +60,8 @@ def fibonacci(n):
         return 1
     
     # TODO: recursive case를 작성하세요
+
+    # 현재 숫자의 바로 앞 두 숫자를 더함 (예 : 현재 2번째면 0 + 1 = 1)
     else:
         return fibonacci(n - 1) + fibonacci(n-2)
  
