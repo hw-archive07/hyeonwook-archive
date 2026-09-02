@@ -145,7 +145,7 @@ def combinations(n: int, k: int) -> list:
         #     result.append(...)
         #     return
         if len(current_combination) == k:
-          result.append(current_combination[:])
+          result.append(list(current_combination))
           return
         # ──────────────────────────────────────────────────────────────────
         # [Level 2] 가지치기 반복문
@@ -170,11 +170,11 @@ def combinations(n: int, k: int) -> list:
             # current_combination.append(...)
             # backtrack(..., current_combination)
             # current_combination.pop()
-
+            current_combination.append(num)
+            backtrack(num + 1, current_combination)
+            current_combination.pop()
             # 처음 호출: 시작 숫자는 1, 지금까지 고른 숫자는 비어 있음
-          current_combination.append(num)
-          backtrack(num + 1, current_combination)
-          current_combination.pop()
+          
     backtrack(1, [])
     return result
 

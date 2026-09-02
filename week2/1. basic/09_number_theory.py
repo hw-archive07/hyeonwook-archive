@@ -97,14 +97,13 @@ def extended_gcd(a, b):
     x = y1
     y =  x1 - (a // b * y1)
     return (gcd_val, x, y)
-        
-    
 
         
 def is_prime(n):
     """
-    소수 판별
-    
+    소수 판별\/
+
+
     Args:
         n: 판별할 양의 정수
     
