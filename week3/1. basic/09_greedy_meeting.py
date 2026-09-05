@@ -18,8 +18,7 @@
 선택: [(1, 4), (5, 7), (8, 11), (12, 14)]
 
 힌트:
-- 종료 시간이 빠른 회의부터 선택!
-- 이전 회의가 끝난 후에 시작하는 회의만 선택
+
 """
 
 def select_meetings(meetings):
@@ -32,20 +31,16 @@ def select_meetings(meetings):
     Returns:
         (배정된 회의 개수, 선택된 회의 리스트)
     """
-    # TODO: 회의가 없으면 0 반환
-    pass
-    
-    # TODO: 종료 시간 기준으로 정렬
-    pass
-    
     selected = []
+    meetings.sort(key=lambda x:x[1])
+    selected.append(meetings[0])
+    for i in meetings:
+        if selected[-1][1] <= i[0]:
+            selected.append(i)
     
-    # TODO: 첫 번째 회의 선택
-    pass
     
-    # TODO: 나머지 회의들 확인
-    ## 이전 회의가 끝난 후 시작하는 회의만 선택
-    pass
+    
+
     
     return len(selected), selected
 

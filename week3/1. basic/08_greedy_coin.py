@@ -24,9 +24,7 @@
 총 6개
 
 힌트:
-- 큰 동전부터 사용
-- 현재 동전으로 최대한 거슬러주기
-- 나머지 금액으로 다음 동전 사용
+
 """
 
 def make_change_greedy(change, coins):
@@ -42,11 +40,14 @@ def make_change_greedy(change, coins):
     """
     result = {}
     total_coins = 0
-    
-    # TODO: 각 동전에 대해 반복
-    ## 현재 동전으로 거슬러줄 수 있는 개수 계산    
-    ## 개수가 0보다 크면 결과에 추가
-    pass
+    for i in coins:
+        count = change // i
+        total_coins += count
+        change %= i
+        if count != 0:
+            result[i] = count
+        
+
     
     return total_coins, result
 
