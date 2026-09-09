@@ -53,14 +53,13 @@ def search_bst(root, target):
     # TODO: root가 None이면 False 반환
     if root is None:
         return False
-    
-    if target == root.value:
-        return True
-    elif target < root.value:
-        return search_bst(root.left, target)
-    else:
-        return search_bst(root.right, target)
 
+    if root.value == target:
+        return True
+    elif root.value > target:
+        return search_bst(root.left, target)
+    elif root.value < target:
+        return search_bst(root.right, target)
 # 테스트 케이스
 if __name__ == "__main__":
     # BST 생성:

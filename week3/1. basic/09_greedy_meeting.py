@@ -17,7 +17,7 @@
 출력: 4개
 선택: [(1, 4), (5, 7), (8, 11), (12, 14)]
 
-힌트:
+    sel = [(1, 4), (5, 7)]
 
 """
 
@@ -32,12 +32,13 @@ def select_meetings(meetings):
         (배정된 회의 개수, 선택된 회의 리스트)
     """
     selected = []
-    meetings.sort(key=lambda x:x[1])
+    meetings.sort(key=lambda x: x[-1])
     selected.append(meetings[0])
+    
+
     for i in meetings:
         if selected[-1][1] <= i[0]:
             selected.append(i)
-    
     
     
 

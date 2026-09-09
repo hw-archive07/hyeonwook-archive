@@ -41,16 +41,16 @@ def bfs(graph, start):
         방문 순서 리스트
     """
     visited = []
-    
-    queue = deque([start]) # 큐에 시작노드 삽입
+    queue = deque([start])
     visited.append(start)
 
     while queue:
-        v = queue.popleft() # v에 큐의 왼쪽 시작노드 추출
-        for i in graph[v]: # 그래프의 v번 반복
-            if i not in visited: # 방문록에 없다면 추가
+        v = queue.popleft()
+        for i in graph[v]:
+            if i not in visited:
                 visited.append(i)
                 queue.append(i)
+   
     return visited
 
 # 테스트 케이스

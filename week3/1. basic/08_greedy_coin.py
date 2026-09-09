@@ -38,14 +38,15 @@ def make_change_greedy(change, coins):
     Returns:
         (총 개수, {동전: 개수} 딕셔너리)
     """
-    result = {}
     total_coins = 0
+    count = 0
+    result = {}
     for i in coins:
-        count = change // i
-        total_coins += count
-        change %= i
-        if count != 0:
+        if i <= change:
+            count = change // i
+            change %= i
             result[i] = count
+            total_coins += count
         
 
     
