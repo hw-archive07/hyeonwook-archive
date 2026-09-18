@@ -68,8 +68,7 @@ static void split_lines(LineView *out, char *text) {
    무효가 된 parts[] 자리에 '그럴듯한 쓰레기 포인터'가 들어차게 만든다. */
 static void warm_stack(void) {
     char *scratch[MAX_LINES];
-    for (int i = 0; i < MAX_LINES; i++)
-        scratch[i] = (char *)0x4141414141414141ULL;   /* 매핑되지 않은 주소 */
+       /* 매핑되지 않은 주소 */
     __asm__ volatile("" :: "r"(scratch) : "memory");   /* 최적화 제거 방지 */
 }
 
