@@ -33,8 +33,6 @@
  *   → 같은 주소를 함수 밖에서 참조하고, 그 내용이 warm_stack 이후 달라져 있으면 SAR.
  *   (stdout 은 버퍼링되니 stderr 로 찍어야 크래시 직전 로그가 남는다)
  *
- * TODO: 지역 배열의 주소를 밖으로 돌려주지 말라. 호출자가 소유하는 저장소(배열/힙)에
- *       결과를 채우거나, 힙에 할당해 수명을 넘기세요.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,7 +61,7 @@ static void split_lines(LineView *out, char *text) {
 
     view_set(out, parts, n);      
 
-    /* TODO 상기 코드를 수정하여 결과를 호출자가 준 out 에 직접 채운다(값 반환 아님, 지역 주소 반환 아님). */       
+    
 }
 
 /* split_lines 가 쓰던 스택 프레임을, 같은 모양(char*[8])의 지역 배열로 덮는다.

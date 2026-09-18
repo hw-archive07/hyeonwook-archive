@@ -28,8 +28,7 @@
  *   → v 가 (nil) 로 찍힌 키가 원인.
  *   (stdout 은 버퍼링되니 stderr 로 찍어야 크래시 직전 로그가 남는다)
  *
- * TODO: cfg_get() 의 NULL 반환을 반드시 검사하라. 없는 키는 기본값("")으로 대체하거나
- *       명시적 오류로 처리한다("사용 전에 검사" 원칙).
+ * 
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,8 +62,10 @@ static void expand(const Config *c, const char *tmpl, char *out, size_t outcap) 
             if (kl >= sizeof key) kl = sizeof key - 1;
             memcpy(key, p + 2, kl);
             key[kl] = '\0';
-
-            const char *v = cfg_get(c, key);      
+            const char *v = " ";
+            if (cfg_get(c, key) != NULL){
+                v = cfg_get(c, key);
+            }
             size_t vl = strlen(v);                 
             if (o + vl < outcap) { memcpy(out + o, v, vl); o += vl; }
             p = end + 1;

@@ -7,7 +7,7 @@
  *    - 맨 위는 항상 1
  *    - 양쪽 가장자리는 항상 1
  *    - 가운데 숫자는 바로 위의 두 숫자의 합
- *              1
+ *             1
  *           1   1
  *         1   2   1
  *       1   3   3   1
@@ -63,7 +63,7 @@ static int tri_index(int i, int j) {
 
 /* 파스칼의 삼각형을 tri[] 에 채운다. */
 static void build_pascal(int *tri, int rows) {
-    for (int i = 0; i <= rows; i++) {
+    for (int i = 0; i < rows; i++) {
         for (int j = 0; j <= i; j++) {
             int idx = tri_index(i, j);
             if (j == 0 || j == i) {

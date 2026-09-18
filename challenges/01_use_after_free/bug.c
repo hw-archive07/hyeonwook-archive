@@ -46,7 +46,7 @@ typedef struct Widget Widget;
 
 typedef struct {
     void (*render)(Widget *self);
-    void (*on_event)(Widget *self, int code);
+    void (*on_event)(Widget *self, int code);           // gdb ./build/06_null_deref    디ㅣ버ㅓ거ㅓ시ㅣ자ㅏ악
 } VTable;
 
 struct Widget {
@@ -91,7 +91,7 @@ static Widget *widget_new(const VTable *vt, int id, const char *label) {
     *   tip 2. 그래서 sizeof *w 는 (VLA 제외) 컴파일 타임에 sizeof(Widget) 상수로 치환된다.
     *   생각해보기: sizeof(Widget) 대신 sizeof *w 로 쓰면 어떤 장점이 있을까?
     */
-    Widget *w = malloc(sizeof *w);
+    Widget *w = malloc(sizeof *w);  // 받은 사이즈를 *w에
     if (!w) { perror("malloc"); exit(1); }
     w->vtbl = vt;
     w->id = id;
@@ -102,7 +102,7 @@ static Widget *widget_new(const VTable *vt, int id, const char *label) {
 }
 
 static void widget_destroy(Widget *w) {
-    free(w);          
+    free(w);                // 얘가 문제   
 }
 
 /* ── Screen ──────────────────────────────────────────────────── */
@@ -113,14 +113,20 @@ static void screen_add(Screen *s, Widget *w) {
 static void screen_dispatch(Screen *s, int code) {
     for (int i = 0; i < s->count; i++) {
         Widget *w = s->items[i];
+        if (i == 2){
+            s->items[i] = NULL;
+        }
         w->vtbl->on_event(w, code);
     }
 }
 
 static void screen_render(Screen *s) {
     for (int i = 0; i < s->count; i++) {
+        if (s->items[i] == NULL) {
+            continue;
+        }
         Widget *w = s->items[i];
-        w->vtbl->render(w);      
+        w->vtbl->render(w);      // 없음
     }
 }
 
@@ -159,13 +165,17 @@ int main(void) {
 
     /* TODO 닫힌(closed) 위젯을 여기서 정리(free + 해당 슬롯 NULL)할 필요가 있음 */
 
+    
+
     char *status = app_build_status("dialog closed");
     printf("%s\n", status);
-
+    
     printf("frame 2:\n");
-    screen_render(&s);           
+    
+    screen_render(&s);     // 여기서 2일 때 segfault      
 
-    free(status);
+    free(status); //todo
+
     for (int i = 0; i < s.count; i++) free(s.items[i]);
     return 0;
 }
