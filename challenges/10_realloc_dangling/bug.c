@@ -1,40 +1,3 @@
-/*
- * Challenge 10 — realloc 후 옛 포인터 사용 (심화: undo 스냅샷 댕글링)
- *
- * [시나리오]
- *   정수 편집 버퍼 EditBuffer. 내용이 커지면 eb_grow() 가 realloc 으로 버퍼를 키운다.
- *   "실행 취소(undo)"를 위해 eb_snapshot() 이 현재 상태를 undo[] 에 저장한다.
- *
- * [기대 동작]
- *   스냅샷을 찍고 값을 많이 추가한 뒤, 정리(eb_free)에서 누수 없이 해제하고 정상 종료.
- *
- * [증상]
- *   eb_snapshot() 이 저장하는 것은 "그 시점의 data 포인터(원시 주소)"다. 이후 eb_grow()
- *   가 realloc 으로 버퍼를 옮기면(주소 변경), 저장해 둔 스냅샷 포인터는 '이미 해제된
- *   옛 블록'을 가리키게 된다(댕글링). 정리 시 eb_free() 는 현재 data 를 해제한 뒤
- *   undo[] 의 옛 포인터들도 free 하는데, 그 블록들은 realloc 이 이미 해제한 것이라
- *   → double free / invalid pointer 로 glibc abort(SIGABRT).
- *
- * [gdb 로 잡기]
- *   make gdb NAME=10_realloc_dangling
- *   (gdb) run                       → abort
- *   (gdb) bt                        → eb_free 의 free(e->undo[i]) 지점
- *   (gdb) print e->undo[i]          → 이 주소가 현재 data 와 다른 '옛' 주소임을 확인
- *   (gdb) break eb_grow             → realloc 전후 e->data 주소가 바뀌는지 관찰
- *
- * [printf(로그)로 잡기]
- *   grow 에서 realloc 전후 주소를, 스냅샷/해제 시 저장/해제 주소를 찍어 대조:
- *     (grow)     fprintf(stderr, "grow old=%p new=%p\n", (void*)old, (void*)e->data); // old 추가 후 확인
- *     (snapshot) fprintf(stderr, "snap  save=%p\n", (void*)e->data);
- *     (free)     fprintf(stderr, "free  undo[%d]=%p\n", i, (void*)e->undo[i]);
- *   → snapshot 이 저장한 주소가 grow 에서 이동해 이미 해제된 뒤, free 에서 다시
- *     그 주소를 해제하면 이중 해제.
- *   (stdout 은 버퍼링되니 stderr 로 찍어야 크래시 직전 로그가 남는다)
- *
- * TODO: 스냅샷은 "원시 버퍼 포인터"가 아니라 내용의 '복사본'을 따로 소유해야 한다.
- *       (예: 스냅샷 시 malloc+memcpy 로 별도 버퍼를 만들고, 그 복사본만 해제)
- *       realloc 이후에는 옛 포인터를 절대 사용/해제하지 말 것.
- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,16 +24,20 @@ static void eb_init(EditBuffer *e) {
 }
 
 static void eb_snapshot(EditBuffer *e) {
-    if (e->undo_n < MAX_UNDO) e->undo[e->undo_n++] = e->data;
+    if (e->undo_n < MAX_UNDO){
+        int *backup = malloc(e->cap * sizeof(int)); // 다음 realloc으로 인한 오류를 막기 위해 백업
+        memcpy(backup, e->data, sizeof(int) * e->len); // 깊은복사
+        e->undo[e->undo_n++] = backup;
+    }
 }
 
 static void eb_grow(EditBuffer *e, size_t need) {
     size_t nc = e->cap;
     while (nc < need) nc *= 2;
-    int *p = realloc(e->data, nc * sizeof(int));   
-    if (!p) { perror("realloc"); free(e->data); exit(1); }
-    e->data = p;                                   
-    e->cap = nc;
+    int *p = realloc(e->data, nc * sizeof(int)); // realloc은 size바이트 만큼 연속된 메모리를 할당할 수 없을 경우
+    if (!p) { perror("realloc"); exit(1); }      // 새로운 영역을 할당 후 기존 요소들을 복사하여 새 메모리 주소를 반환한다.
+    e->data = p;                                 // **(엄청난 사실)**
+    e->cap = nc;                                
 }
 
 static void eb_push(EditBuffer *e, int v) {
@@ -82,7 +49,9 @@ static void eb_free(EditBuffer *e) {
     free(e->data);
     free(e->clipboard);
     for (int i = 0; i < e->undo_n; i++) {
-        free(e->undo[i]);           
+        if (e->undo[i] != NULL){
+            free(e->undo[i]); 
+        }          
     }
     e->undo_n = 0;
     e->data = NULL;

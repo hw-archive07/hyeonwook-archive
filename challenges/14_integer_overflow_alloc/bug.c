@@ -49,28 +49,39 @@ typedef struct {
     int width;
     int height;
     int channels;
-    int nbytes;              
+    size_t nbytes;              
     unsigned char *px;
 } Image;
 
-static Image *image_new(int width, int height, int channels) {
+static Image *image_new(unsigned width, unsigned height, unsigned channels) {
     Image *img = malloc(sizeof *img);
     if (!img) { perror("malloc"); exit(1); }
     img->width = width;
     img->height = height;
     img->channels = channels;
 
-    img->nbytes = width * height * channels;
-    img->px = malloc((size_t)img->nbytes);     
+    if (width > 0 && (size_t)height > SIZE_MAX / width) {
+        fprintf(stderr, "Error: width * height overflow\n");
+        exit(1);
+    }
+    size_t pixels = (size_t)width * height;
+
+    // 오버플로 검사
+    if (pixels > 0 && (size_t)channels > SIZE_MAX / pixels) {
+        fprintf(stderr, "Error: pixels * channels overflow\n");
+        exit(1);
+    }
+    img->nbytes = pixels * channels;
+
+    // size_t 크기로 메모리 할당
+    img->px = malloc(img->nbytes);     
     if (!img->px) { perror("malloc px"); exit(1); }
     return img;
 }
 
 static void image_fill(Image *img, unsigned char value) {
-
-    size_t total = (size_t)img->width * (size_t)img->height * (size_t)img->channels;
-    for (size_t i = 0; i < total; i++) {
-        img->px[i] = value;                     
+    for (size_t i = 0; i < img->nbytes; i++) {
+        img->px[i] = value;      
     }
 }
 
@@ -86,8 +97,8 @@ int main(void) {
      *   생각해보기: 할당은 작게, 쓰기는 크게 → 무슨 일이 벌어질까? 그리고 왜 채널이 4(RGBA)
      *               일 때가 3(RGB)일 때보다 오버플로가 더 쉽게 터질까?
      *               (해결 힌트: 크기 계산을 size_t 로 승격하고, 곱셈 오버플로를 검사한다) */
-    Image *img = image_new(65536, 65536, 4);
-    printf("allocated nbytes(int)=%d for %dx%d x%d\n",
+    Image *img = image_new(256, 256, 4);
+    printf("allocated nbytes(int)=%zu for %dx%d x%d\n",
            img->nbytes, img->width, img->height, img->channels);
 
     image_fill(img, 0xFF);                       

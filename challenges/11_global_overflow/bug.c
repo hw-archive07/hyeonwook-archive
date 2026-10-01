@@ -28,8 +28,7 @@
  *   → off 가 cap 을 넘어서도 계속 커지면 경계를 벗어난 것.
  *   (stdout 은 버퍼링되니 stderr 로 찍어야 크래시 직전 로그가 남는다)
  *
- * TODO: arena_alloc() 에서 (arena_off + n <= sizeof(arena)) 를 반드시 검사하고,
- *       공간이 부족하면 NULL 반환 또는 오류 처리하세요.
+
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +51,13 @@ static size_t arena_off = 0;
 
 static void *arena_alloc(size_t n) {
     void *p = &arena[arena_off];
-    arena_off += n;
+    int v = arena_off + n;
+    if (v <= sizeof(arena)){
+        arena_off += n;
+    }
+    else {
+        perror("malloc"); exit(1);
+    }
     return p;
 }
 

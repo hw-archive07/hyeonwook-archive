@@ -1,43 +1,3 @@
-/*
- * Challenge 01 — Use After Free (심화: vtable 기반 위젯 시스템)
- *
- * [시나리오]
- *   아주 작은 GUI 흉내. 각 위젯(Widget)은 힙 객체이며 첫 멤버로 "vtable"
- *   (render/on_event 함수 포인터 묶음)을 가진다. Screen 은 위젯 포인터 배열을
- *   들고 있고, 이벤트를 나눠준 뒤(dispatch) 한 프레임을 그린다(render).
- *
- * [기대 동작]
- *   버튼/라벨/다이얼로그를 그리고, 닫기 이벤트 후 남은 위젯만 다시 그린 뒤
- *   정상 종료(0).
- *
- * [증상]
- *   닫기 이벤트 핸들러가 다이얼로그 위젯을 free() 하지만, Screen 의 포인터 배열에서
- *   그 슬롯을 제거(NULL 로)하지 않는다. 그 사이 앱이 상태 메시지 버퍼를 새로 할당하며
- *   방금 해제된 청크를 재사용해 vtable 포인터 자리를 덮어쓴다.
- *   다음 렌더 패스에서 해제된 위젯의 w->vtbl->render 를 호출 → 망가진 함수 포인터로
- *   점프 → SIGSEGV. 크래시는 render 루프에서 나지만, 원인은 멀리 떨어진 close 핸들러다.
- *
- * [gdb 로 잡기]
- *   make gdb NAME=01_use_after_free
- *   (gdb) run                         → 크래시(SIGSEGV)
- *   (gdb) bt                          → screen_render() 안 w->vtbl->render(w) 지점
- *   (gdb) print w                     → 어떤 위젯인지(주소/슬롯) 확인
- *   (gdb) print w->vtbl               → 오염돼 있음
- *   (gdb) print s->items[2]           → 이미 해제된 슬롯이 그대로 남아있음
- *   (gdb) break widget_destroy        → 누가/언제 이 위젯을 free 하는지 역추적
- *
- * [printf(로그)로 잡기]
- *   위젯 해제 시점과 렌더 시점의 vtbl 값을 각각 찍어 "해제가 사용보다 먼저"인지 확인:
- *     (destroy) fprintf(stderr, "destroy id=%d w=%p vtbl=%p\n", w->id,(void*)w,(void*)w->vtbl);
- *     (render)  fprintf(stderr, "render  id=%d w=%p vtbl=%p\n", w->id,(void*)w,(void*)w->vtbl);
- *   → 같은 주소가 destroy 후 render 에서 다시 나오고, vtbl 값이 달라져 있으면 UAF.
- *   (stdout 은 버퍼링되니 stderr 로 찍어야 크래시 직전 로그가 남는다)
- *
- * TODO: "해제"와 "슬롯 정리"를 한 곳에서 같이 하세요. 위젯 자신은 Screen 을 모르므로
- *       (dialog_on_event 는 self 만 안다) 이벤트 핸들러에서는 closed 표시만 남기고,
- *       Screen 쪽에서 closed 위젯을 free 한 뒤 그 슬롯을 NULL 로 만드는 편이 자연스럽습니다.
- *       이후 dispatch/render 루프가 NULL 슬롯을 건너뛰게 하세요. "해제 = 소유 포인터 무효화".
- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,8 +5,8 @@
 typedef struct Widget Widget;
 
 typedef struct {
-    void (*render)(Widget *self);
-    void (*on_event)(Widget *self, int code);           // gdb ./build/06_null_deref    디ㅣ버ㅓ거ㅓ시ㅣ자ㅏ악
+    void (*render)(Widget *self);   // VTalble에 함수포인터 render, on_event를 선언
+    void (*on_event)(Widget *self, int code);           
 } VTable;
 
 struct Widget {
@@ -58,13 +18,13 @@ struct Widget {
 
 #define MAX_WIDGETS 8
 typedef struct {
-    Widget *items[MAX_WIDGETS];
+    Widget *items[MAX_WIDGETS]; // items를 8크기의 배열로
     int count;
 } Screen;
 
 /* ── 위젯 종류별 동작 ─────────────────────────────────────────── */
 static void button_render(Widget *self) {
-    printf("  [Button #%d] \"%s\"\n", self->id, self->label);
+    printf("  [Button #%d] \"%s\"\n", self->id, self->label);   // render 호출하면 출력하는 코드
 }
 static void label_render(Widget *self) {
     printf("  Label #%d: %s\n", self->id, self->label);
@@ -73,15 +33,17 @@ static void dialog_render(Widget *self) {
     printf("  <<Dialog #%d>> %s\n", self->id, self->label);
 }
 
-static void widget_noop_event(Widget *self, int code) { (void)self; (void)code; }
+static void widget_noop_event(Widget *self, int code) { (void)self; (void)code; }   // 그냥 더미인듯 | 뭐하는건지 모르겠음
 
 /* 다이얼로그는 이벤트 코드 1(닫기)을 받으면 스스로 정리(파괴)된다 */
 static void dialog_on_event(Widget *self, int code);
 
+/* 각 변수에 함수포인터 할당 */
 static const VTable BUTTON_VT = { button_render, widget_noop_event };
 static const VTable LABEL_VT  = { label_render,  widget_noop_event };
 static const VTable DIALOG_VT = { dialog_render, dialog_on_event  };
 
+/* 그냥 새로운 위젯 만드는거 */
 static Widget *widget_new(const VTable *vt, int id, const char *label) {
 
     /* [Thinking Point]
@@ -101,8 +63,9 @@ static Widget *widget_new(const VTable *vt, int id, const char *label) {
     return w;
 }
 
+/* 호출되면 해당 위젯 프리 */
 static void widget_destroy(Widget *w) {
-    free(w);                // 얘가 문제   
+    free(w);                // 얘가 문제
 }
 
 /* ── Screen ──────────────────────────────────────────────────── */
@@ -110,16 +73,15 @@ static void screen_add(Screen *s, Widget *w) {
     if (s->count < MAX_WIDGETS) s->items[s->count++] = w;
 }
 
+/* for문 돌리면서 위젯을 s->items[i]번째 값으로 선언하고 on_event호출 */
 static void screen_dispatch(Screen *s, int code) {
     for (int i = 0; i < s->count; i++) {
         Widget *w = s->items[i];
-        if (i == 2){
-            s->items[i] = NULL;
-        }
         w->vtbl->on_event(w, code);
     }
 }
 
+/* 위 처럼 위젯에 저장하고 출력 (print) */
 static void screen_render(Screen *s) {
     for (int i = 0; i < s->count; i++) {
         if (s->items[i] == NULL) {
@@ -130,10 +92,10 @@ static void screen_render(Screen *s) {
     }
 }
 
+/* 전체 코드를 뜯어보면 함수 포인터 선언하는 과정에서 dialog만 on_event가 다름 */
 static void dialog_on_event(Widget *self, int code) {
     if (code == 1) {
         self->closed = 1;
-        widget_destroy(self);   
     }
 }
 
@@ -154,6 +116,7 @@ static char *app_build_status(const char *text) {
 int main(void) {
     Screen s = { .count = 0 };
 
+    /* 그냥 텍스트 출력 코드임 */
     screen_add(&s, widget_new(&LABEL_VT,  10, "Welcome"));
     screen_add(&s, widget_new(&BUTTON_VT, 11, "OK"));
     screen_add(&s, widget_new(&DIALOG_VT, 12, "Are you sure?"));  /* items[2] */
@@ -164,17 +127,20 @@ int main(void) {
     screen_dispatch(&s, 1);
 
     /* TODO 닫힌(closed) 위젯을 여기서 정리(free + 해당 슬롯 NULL)할 필요가 있음 */
-
+    for (int i = 0; i < s.count; i++){
+        if (s.items[i] != NULL && s.items[i]->closed == 1){
+            widget_destroy(s.items[i]);
+            s.items[i] = NULL;
+        }
+    }
     
 
     char *status = app_build_status("dialog closed");
     printf("%s\n", status);
-    
     printf("frame 2:\n");
-    
     screen_render(&s);     // 여기서 2일 때 segfault      
 
-    free(status); //todo
+    free(status);
 
     for (int i = 0; i < s.count; i++) free(s.items[i]);
     return 0;

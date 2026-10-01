@@ -1,39 +1,3 @@
-/*
- * Challenge 03 — Heap Buffer Overflow (심화: 동적 배열 성장 버그)
- *
- * [시나리오]
- *   자동 성장하는 정수 동적 배열 IntList (init/ensure/push/sum). 용량이 부족하면
- *   list_ensure() 가 용량을 2배로 늘리고 realloc 한다. 이 리스트로 큰 수열을
- *   만들어 합을 구한다.
- *
- * [기대 동작]
- *   0..N-1 을 100 으로 나눈 나머지를 리스트에 넣고, 길이·용량·합을 출력한 뒤 정상 종료.
- *
- * [증상]
- *   list_ensure() 가 새 용량(newcap)을 계산해 l->cap 에는 반영하지만,
- *   정작 realloc 은 "옛 용량(l->cap)" 으로 호출한다. 즉 논리 용량(cap)은 커지는데
- *   실제 버퍼는 한 세대 뒤처져, push 가 실제 버퍼 밖으로 계속 쓴다.
- *   힙 경계를 넘어 쓰면서 힙 메타데이터가 깨지거나(→ 이후 realloc/free 에서 SIGABRT)
- *   매핑되지 않은 페이지까지 밀고 나가 SIGSEGV. 크래시는 push 의 대입 지점 또는
- *   다음 realloc 에서 나지만, 원인은 ensure 의 realloc 인자다.
- *
- * [gdb 로 잡기]
- *   make gdb NAME=03_heap_buffer_overflow
- *   (gdb) run                         → 크래시(SIGSEGV) 또는 abort
- *   (gdb) bt                          → list_push 의 l->data[l->len]=x 또는 realloc 내부
- *   (gdb) frame N ; print *l           → cap 은 큰데 실제 버퍼는 그보다 작음(불일치)
- *   (gdb) print l->len  / print l->cap → len 이 실제 확보량을 넘어섰는지 확인
- *   (gdb) break list_ensure           → newcap 과 realloc 에 넘기는 크기를 대조
- *
- * [printf(로그)로 잡기]
- *   ensure 에서 (old cap, newcap, realloc 에 넘기는 크기) 를 함께 찍어 불일치를 본다:
- *     fprintf(stderr, "ensure old=%zu new=%zu realloc_bytes=%zu\n",
- *             l->cap, newcap, l->cap * sizeof(int));
- *   → newcap 과 realloc 크기가 다르면 그게 원인.
- *   (stdout 은 버퍼링되니 stderr 로 찍어야 크래시 직전 로그가 남는다)
- *
- * 
- */
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -54,17 +18,17 @@ typedef struct {
 static void list_init(IntList *l) {
     l->cap  = 8;
     l->len  = 0;
-    l->data = malloc(l->cap * sizeof(int));
+    l->data = malloc(l->cap * sizeof(int)); // 여기서 말록으로 할당 했음
     if (!l->data) { perror("malloc"); exit(1); }
 }
 
 static void list_ensure(IntList *l, size_t need) {
     if (need <= l->cap) return;
 
-    size_t newcap = l->cap ? l->cap * 2 : 8;
+    size_t newcap = l->cap ? l->cap * 2 : 8;    // 이거 선언 해놓고
     while (newcap < need) newcap *= 2;
 
-    int *p = realloc(l->data, newcap * sizeof(int));
+    int *p = realloc(l->data, newcap * sizeof(int));    // 똑같은거 재할당함 ( l->cap에서 newcap으로 변경 )
     if (!p) { perror("realloc"); free(l->data); exit(1); }
 
     l->data = p;

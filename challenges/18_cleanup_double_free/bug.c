@@ -72,7 +72,8 @@ static int conn_open(Conn *c, size_t bufsz) {
 
     if (!handshake_ok(c)) {
 
-        free(c->tx);              
+        free(c->tx); 
+        c->tx = NULL;             
         goto fail_tx;             
     }
 
@@ -80,10 +81,12 @@ static int conn_open(Conn *c, size_t bufsz) {
 
 fail_state:
     free(c->state);
+    c->state = NULL;
 fail_tx:
-    free(c->tx);                 
+    free(NULL);                 
 fail_rx:
     free(c->rx);
+    c->rx = NULL;
     return -1;
 }
 
